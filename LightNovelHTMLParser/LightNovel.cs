@@ -37,5 +37,9 @@ namespace LightNovelHTMLParser
             htmllink = Link;
             linktitle = Title;
         }
+        public override string ToString()
+        {
+            return Title;
+        }
     }
 }

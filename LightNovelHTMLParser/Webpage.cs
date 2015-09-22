@@ -11,5 +11,10 @@ namespace LightNovelHTMLParser
         public string html;
         public string link;
         public int id;
+        public List<LightNovel> Lightnovels;
+        public Webpage()
+        {
+            Lightnovels = new List<LightNovel>();
+        }
     }
 }

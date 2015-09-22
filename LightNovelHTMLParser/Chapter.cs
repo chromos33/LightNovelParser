@@ -8,6 +8,7 @@ namespace LightNovelHTMLParser
 {
     public class Chapter
     {
+        public bool downloadscheduled = false;
         private string htmllink;
         public string Link
         {
@@ -27,6 +28,11 @@ namespace LightNovelHTMLParser
             htmllink = Link;
             linktitle = Title;
         }
-
+        public override string ToString()
+        {
+            return Title;
+        }
+        //html is the content that lates goes into epub
+        public string html;
     }
 }

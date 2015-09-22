@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
@@ -13,11 +14,9 @@ namespace LightNovelHTMLParser
 {
     public partial class LightNovelDownloadForm : Form
     {
-        List<LightNovel> lightnovels;
         public LightNovelDownloadForm()
         {
             InitializeComponent();
-            lightnovels = new List<LightNovel>();
         }
 
         private void label1_Click(object sender, EventArgs e)
@@ -27,7 +26,7 @@ namespace LightNovelHTMLParser
 
         private void LightNovelDownloadForm_Load(object sender, EventArgs e)
         {
-
+          
         }
         private void LightNovelDownloadForm_Resize(object sender, System.EventArgs e)
         {
@@ -88,8 +87,7 @@ namespace LightNovelHTMLParser
                         if(!VNTitles.ToArray()[i].InnerHtml.ToString().Contains("<img"))
                         {
                             LightNovel tempnovel = new LightNovel(VNlinks.ToArray()[i].Value.ToString(), VNTitles.ToArray()[i].InnerHtml.ToString());
-                            LightNovelAvailableField.Items.Add(tempnovel.Title.ToString());
-                            lightnovels.Add(tempnovel);
+                            LightNovelAvailableField.Items.Add(tempnovel);
                         }
                     }
                     innerhtml = null;
@@ -102,55 +100,82 @@ namespace LightNovelHTMLParser
 
         private void download_btn_Click(object sender, EventArgs e)
         {
-            // download visual novel content here
+            if (LightNovelDownloadList.SelectedItems.Count > 0)
+            {
+
+                List<Webpage> webpages = new List<Webpage>();
+
+                foreach (Chapter item in LightNovelDownloadList.SelectedItems)
+                {
+                    Webpage newpage = new Webpage();
+                    newpage.html = new System.Net.WebClient().DownloadString(item.Link);
+                    item.downloadscheduled = true;
+                }
+                foreach(LightNovel item in LightNovelAvailableField.SelectedItems)
+                {
+                    foreach(Chapter chapter in item.Chapter)
+                    {
+                        String html = new System.Net.WebClient().DownloadString(chapter.Link);
+                        HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
+                        doc.LoadHtml(html);
+                        var data = from nodes in doc.DocumentNode.Descendants("div") where nodes.Attributes["class"] != null && nodes.Attributes["class"].Value.Contains("post-body entry-content") select nodes;
+                        foreach (var innterhtmldata in data)
+                        {
+                            chapter.html = innterhtmldata.InnerHtml;
+                        }
+                    }
+                }
+                // loop through Selected Lightnovels here and generate Epub from chapterhtml
+            }
         }
 
         private void chapterscan_btn_Click(object sender, EventArgs e)
         {
             List<Webpage> webpages = new List<Webpage>();
-            foreach (var item in LightNovelAvailableField.SelectedIndices)
+            foreach (LightNovel item in LightNovelAvailableField.SelectedItems)
             {
                 Webpage newpage = new Webpage();
-                newpage.html = new System.Net.WebClient().DownloadString(lightnovels.ToArray()[Int32.Parse(item.ToString())].Link);
-                newpage.id = Int32.Parse(item.ToString());
+                newpage.Lightnovels.Add(item);
+                newpage.html = new System.Net.WebClient().DownloadString( item.Link + "?max-results=300");
                 webpages.Add(newpage);
             }
             HTMLChapterListParse(webpages);
         }
         private void HTMLChapterListParse(List<Webpage> pages)
         {
-            foreach(Webpage page in pages)
+            LightNovelDownloadList.Items.Clear();
+            foreach (Webpage page in pages)
             {
                 HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
                 doc.LoadHtml(page.html);
                 var data = from nodes in doc.DocumentNode.Descendants("article") where nodes.Attributes["class"].Value.ToString().Contains("post hentry") select nodes;
-                foreach(var dataentry in data)
+                HtmlAgilityPack.HtmlNode[] dataarray = data.ToArray();
+                for (int j = dataarray.Count() - 1; j >= 0; j--)
                 {
                     HtmlAgilityPack.HtmlDocument entry = new HtmlAgilityPack.HtmlDocument();
-                    entry.LoadHtml(dataentry.InnerHtml);
+                    entry.LoadHtml(dataarray[j].InnerHtml);
                     var entrydata = from innernodes in entry.DocumentNode.Descendants("a") where innernodes.Attributes["href"] != null select innernodes;
-                    foreach(var datanode in entrydata)
+                    HtmlAgilityPack.HtmlNode[] entrydatarray = entrydata.ToArray();
+                    for(int i = entrydatarray.Count()-1;i >=0;i--)
                     {
-                            if(datanode.InnerHtml.IndexOf("Chapter") > 0)
+                        if(entrydatarray[i].InnerHtml.IndexOf("Chapter") > 0)
+                        {
+                            foreach(LightNovel chaptertest in page.Lightnovels)
                             {
-                            lightnovels[page.id].addChapter(new Chapter(datanode.Attributes["href"].Value, datanode.InnerHtml));
+                                Console.WriteLine(chaptertest.Title.ToLower());
+                                Console.WriteLine(entrydata.ToArray()[i].InnerHtml.ToLower());
+                                if (chaptertest.Title.ToLower().Contains(entrydata.ToArray()[i].InnerHtml.ToLower().Split(':')[0]))
+                                {
+                                    chaptertest.addChapter(new Chapter(entrydatarray[i].Attributes["href"].Value, entrydata.ToArray()[i].InnerHtml));
+                                }
+                            }
+                            LightNovelDownloadList.Items.Add(new Chapter(entrydatarray[i].Attributes["href"].Value, entrydata.ToArray()[i].InnerHtml));
                         }
-                        
                     }
                     entry = null;         
                 }
                 doc = null;
-
             }
-            LightNovelDownloadList.Items.Clear();
-            foreach (LightNovel LNitem in lightnovels)
-            {
-                foreach(Chapter chapter in LNitem.Chapter)
-                {
-                    LightNovelDownloadList.Items.Add(chapter.Title);
-                }
-            }
-            
         }
     }
 }
