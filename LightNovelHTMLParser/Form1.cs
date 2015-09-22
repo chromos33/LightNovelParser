@@ -123,6 +123,8 @@ namespace LightNovelHTMLParser
                         {
                             chapter.html = innterhtmldata.InnerHtml;
                         }
+                        //put this back in after testin phase to lessen the load on webserver
+                        //System.Threading.Thread.Sleep(2000);
                     }
                 }
                 // loop through Selected Lightnovels here and generate Epub from chapterhtml
