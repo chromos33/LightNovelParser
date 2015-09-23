@@ -10,6 +10,7 @@ namespace LightNovelHTMLParser
     {
         public bool downloadscheduled = false;
         private string htmllink;
+        public string file;
         public string Link
         {
             get { return htmllink; }

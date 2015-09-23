@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using HtmlAgilityPack;
+using System.IO;
 
 namespace LightNovelHTMLParser
 {
@@ -123,11 +124,60 @@ namespace LightNovelHTMLParser
                         {
                             chapter.html = innterhtmldata.InnerHtml;
                         }
+                        foreach(Chapter test in LightNovelDownloadList.SelectedItems)
+                        {
+                            //TODO: Check why test.Title is not set sometimes
+                            System.Diagnostics.Debug.WriteLine(test.Title);
+                            System.Diagnostics.Debug.WriteLine(chapter.Title);
+                            if (test.Title == chapter.Title)
+                            {
+                                chapter.downloadscheduled = true;
+                            }
+                        }
+                        
                         //put this back in after testin phase to lessen the load on webserver
                         //System.Threading.Thread.Sleep(2000);
                     }
                 }
+                System.IO.Directory.CreateDirectory("temp");
+                string dir = Directory.GetCurrentDirectory();
+                dir = dir +"\\temp\\";
+                System.Threading.Thread.Sleep(1000);
                 // loop through Selected Lightnovels here and generate Epub from chapterhtml
+                foreach(LightNovel lightnovel in LightNovelAvailableField.SelectedItems)
+                {
+                    //loop chapters
+                    List<Epub4Net.Chapter> chapters = new List<Epub4Net.Chapter>();
+                    foreach(Chapter chapter in lightnovel.Chapter)
+                    {
+                        if(chapter.downloadscheduled)
+                        {
+                            string filename = chapter.Title.Replace(" ", "_") + ".html";
+                            string file = filename.Replace(":", "");
+                            filename = dir + filename.Replace(":", "");
+                            string htmlcode = "<html><head></head><body>"+chapter.html+"</body></html>";
+                            System.IO.File.WriteAllText(filename, htmlcode, Encoding.UTF8);
+                            //chapters.Add(new Epub4Net.Chapter(filename, file, chapter.Title));
+                        }
+                    }
+                    // TODO:Check why epub is invalid
+                    /*
+                    Epub4Net.Epub epub = new Epub4Net.Epub(lightnovel.Title, "LightNovelParser", chapters);
+                    epub.BookId = "1";
+                    epub.Language = "en";
+                    epub.Publisher = "LightNovelParser";
+                    epub.Subject = "Entertainment";
+                    Epub4Net.EPubBuilder builder = new Epub4Net.EPubBuilder();
+                    var epubFilePath = builder.Build(epub);
+                    */
+                    
+                }
+                //string[] filePaths = Directory.GetFiles(dir);
+                //foreach(var path in filePaths)
+                //{
+                    //File.Delete(path);
+                //}
+                MessageBox.Show("finished");
             }
         }
 
