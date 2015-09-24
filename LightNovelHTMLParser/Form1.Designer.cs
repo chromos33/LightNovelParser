@@ -65,7 +65,9 @@
             this.SupportedPageList.FormattingEnabled = true;
             this.SupportedPageList.HorizontalScrollbar = true;
             this.SupportedPageList.Items.AddRange(new object[] {
-            "http://japtem.blogspot.de/"});
+            "http://japtem.blogspot.de/",
+            "https://www.baka-tsuki.org/project/index.php?title=Category:Light_novel_%28Englis" +
+                "h%29"});
             this.SupportedPageList.Location = new System.Drawing.Point(158, 42);
             this.SupportedPageList.Name = "SupportedPageList";
             this.SupportedPageList.Size = new System.Drawing.Size(217, 139);
