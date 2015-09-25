@@ -113,7 +113,6 @@ namespace LightNovelHTMLParser
                             {
                                 if(!(linkitem.InnerHtml.ToLower().Contains("baka-tsuki") || linkitem.InnerHtml.ToLower().Contains("teaser project list")))
                                 {
-                                    System.Diagnostics.Debug.WriteLine(linkitem.InnerHtml.ToLower());
                                     LightNovel tempnovel = new LightNovel("https://www.baka-tsuki.org" + linkitem.Attributes["href"].Value, linkitem.InnerHtml);
                                     LightNovelAvailableField.Items.Add(tempnovel);
                                 }
@@ -198,19 +197,63 @@ namespace LightNovelHTMLParser
                     HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
                     doc.LoadHtml(page.html);
                     var data = doc.DocumentNode.Descendants("dl").Select(a => a.Descendants("a"));
-                    int chapter = 1;
+                    int volume = 1;
+                    int i = 1;
                     foreach (var dataitems in data)
                     {
-                        // TODO: Check why chapters are added twice
-                        foreach(var dataitem in dataitems)
+                        if(i % 2 != 0)
                         {
-                            if(!(dataitem.Attributes["title"].Value.Contains("page does not exist")))
+                            Chapter chapter = null;
+                            foreach (var dataitem in dataitems)
                             {
-                                LightNovelDownloadList.Items.Add(new Chapter(dataitem.Attributes["href"].Value, "Volume " + chapter + " " + dataitem.InnerHtml));
+                                if (dataitem.Attributes["class"] != null)
+                                {
+                                    if(dataitem.Attributes["class"].Value.Contains("external"))
+                                    {
+                                        chapter = new Chapter(dataitem.Attributes["href"].Value, "Volume " + volume + " " + dataitem.InnerHtml);
+                                    }
+                                    else
+                                    {
+                                        if (!(dataitem.Attributes["title"].Value.Contains("page does not exist")))
+                                        {
+                                            if(!(dataitem.Attributes["title"].Value.ToLower().Contains("user")))
+                                            {
+                                                chapter = new Chapter("https://www.baka-tsuki.org" + dataitem.Attributes["href"].Value, dataitem.Attributes["title"].Value);
+                                            }
+                                            
+                                        }
+                                    }
+                                    
+                                }
+                                else
+                                {
+                                    if (!(dataitem.Attributes["title"].Value.Contains("page does not exist")))
+                                    {
+                                        if (!(dataitem.Attributes["title"].Value.ToLower().Contains("user")))
+                                            {
+                                            chapter = new Chapter("https://www.baka-tsuki.org" + dataitem.Attributes["href"].Value, dataitem.Attributes["title"].Value);
+                                        }
+                                    }
+                                }
+                                if(chapter != null)
+                                {
+                                    foreach (LightNovel chaptertest in page.Lightnovels)
+                                    {
+                                        if (chaptertest.Title.ToLower().Contains(chapter.Title.ToLower().Split(':')[0]))
+                                        {
+                                            chaptertest.addChapter(chapter);
+                                        }
+                                    }
+                                    LightNovelDownloadList.Items.Add(chapter);
+                                }
+                                chapter = null;
+                                
                             }
-                            
+                            volume++;
+
                         }
-                        chapter++;
+                        i++;
+
                     }
                 }
 
@@ -227,6 +270,7 @@ namespace LightNovelHTMLParser
                 foreach (Chapter item in LightNovelDownloadList.CheckedItems)
                 {
                     Webpage newpage = new Webpage();
+                    System.Diagnostics.Debug.WriteLine(item.Link);
                     newpage.html = new System.Net.WebClient().DownloadString(item.Link);
                     item.downloadscheduled = true;
                 }
@@ -234,20 +278,39 @@ namespace LightNovelHTMLParser
                 {
                     foreach (Chapter chapter in item.Chapter)
                     {
-                        String html = new System.Net.WebClient().DownloadString(chapter.Link);
+                        System.Net.WebClient client = new System.Net.WebClient();
+                        client.Encoding = System.Text.Encoding.UTF8;
+                        String html = client.DownloadString(chapter.Link);
                         HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
                         doc.LoadHtml(html);
-                        var data = from nodes in doc.DocumentNode.Descendants("div") where nodes.Attributes["class"] != null && nodes.Attributes["class"].Value.Contains("post-body entry-content") select nodes;
-                        foreach (var innterhtmldata in data)
+                        if (chapter.Link.Contains("japtem"))
                         {
-                            chapter.html = innterhtmldata.InnerHtml;
-                        }
-                        foreach (Chapter test in LightNovelDownloadList.CheckedItems)
-                        {
-                            //TODO: Check why test.Title is not set sometimes#
-                            if (test.Title == chapter.Title)
+                            var data = from nodes in doc.DocumentNode.Descendants("div") where nodes.Attributes["class"] != null && nodes.Attributes["class"].Value.Contains("post-body entry-content") select nodes;
+                            foreach (var innterhtmldata in data)
                             {
-                                chapter.downloadscheduled = true;
+                                chapter.html = innterhtmldata.InnerHtml;
+                            }
+                            foreach (Chapter test in LightNovelDownloadList.CheckedItems)
+                            {
+                                if (test.Title == chapter.Title)
+                                {
+                                    chapter.downloadscheduled = true;
+                                }
+                            }
+                        }
+                        if(chapter.Link.Contains("baka-tsuki"))
+                        {
+                            var data = doc.DocumentNode.Descendants("div").Where(div => div.Attributes["id"] != null).Where(precisediv => precisediv.Attributes["id"].Value == "content" || precisediv.Attributes["id"].Value == "mw-content-text");
+                            foreach (var dataitems in data)
+                            {
+                                chapter.html = dataitems.InnerHtml;
+                            }
+                            foreach (Chapter test in LightNovelDownloadList.CheckedItems)
+                            {
+                                if (test.Title == chapter.Title)
+                                {
+                                    chapter.downloadscheduled = true;
+                                }
                             }
                         }
 
@@ -271,7 +334,17 @@ namespace LightNovelHTMLParser
                             string filename = chapter.Title.Replace(" ", "_") + ".html";
                             string file = filename.Replace(":", "");
                             filename = dir + filename.Replace(":", "");
-                            string htmlcode = "<?xml version='1.0' encoding='utf-8'?><html xmlns='http://www.w3.org/1999/xhtml' lang='de' xml:lang='de'><head><title>Unknown</title>< meta http - equiv = 'Content-Type' content = 'text/html; charset=utf-8'/></head><body>" + chapter.html + "</body></html>";
+                            string enhanced = "";
+                            if (chapter.html.IndexOf("<table") >= 0)
+                            {
+                                enhanced = chapter.html.Substring(0, chapter.html.IndexOf("<table"));
+                            }
+                            else
+                            {
+                                enhanced = chapter.html;
+                            }
+                            
+                            string htmlcode = "<?xml version='1.0' encoding='utf-8'?><html xmlns='http://www.w3.org/1999/xhtml' lang='de' xml:lang='de'><head><title>Unknown</title>< meta http - equiv = 'Content-Type' content = 'text/html; charset=utf-8'/></head><body>" + enhanced + "</body></html>";
                             System.IO.File.WriteAllText(filename, htmlcode, Encoding.UTF8);
                             chapters.Add(new Epub4Net.Chapter(filename, file, chapter.Title));
                         }
@@ -291,7 +364,7 @@ namespace LightNovelHTMLParser
                 string[] filePaths = Directory.GetFiles(dir);
                 foreach (var path in filePaths)
                 {
-                    File.Delete(path);
+                    //File.Delete(path);
                 }
                 MessageBox.Show("finished");
             }
